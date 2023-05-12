@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Three.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style></style>
+	</head>
+
+	<body style="margin: 0;">
+                
+        <audio id="audio" controls></audio>
+            <div id="out"></div>
+        </div>	
+		<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+		<script type="importmap">
+		  {
+			"imports": {
+			  "three": "https://unpkg.com/three@0.151.3/build/three.module.js",
+			  "three/addons/": "https://unpkg.com/three@0.151.3/examples/jsm/"
+			}
+		  }
+		</script>
+
+		<script type="module">
+
+        var audio = document.getElementById("audio");
+        var analyser;
+        var dataArray;
+
+        play("tan.mp3")
+
+        function play(e) {
+            console.log(e);
+            audio.src = e; // URL.createObjectURL(e);
+            audio.load();
+            audio.play();
+
+
+            var context = new AudioContext();
+            var src = context.createMediaElementSource(audio);
+            analyser = context.createAnalyser();
+            src.connect(analyser);
+            analyser.connect(context.destination);
+            analyser.fftSize = 512;
+            var bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+        }
+
+
+			import * as THREE from 'three';
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+            let bones = [];
+            let box3 = [];
+            let box = [];
+
+			const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.25, 20);
+            camera.position.set(0, 0, -10);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+			document.body.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.minDistance = 2;
+            controls.maxDistance = 10;
+            controls.target.set(0, 0, -0.2);
+            controls.update();
+
+			const raycaster = new THREE.Raycaster();
+    		const mouse = new THREE.Vector2();
+			const playAnimation = {
+				playAnimation: true
+			};
+			
+			const clock = new THREE.Clock();
+			clock.start();
+			let mixer;
+
+
+			addDirectionalLight(scene);
+
+			loadEnvironment(scene);
+
+
+			load(scene);
+
+
+			window.addEventListener('resize', onWindowResize);
+			window.addEventListener('resize', onWindowResize);		
+
+
+			animate();
+
+            function randomIntFromInterval(min, max, decimalPlaces) { // min and max included 
+                return (Math.random() * (max - min) + min).toFixed(decimalPlaces) * 1;
+            }
+
+			function load() {
+				
+                for(let i = 0; i < 50; i++) {
+                    let cube = addCube(randomIntFromInterval(-5, 5, 1), randomIntFromInterval(-5, 5, 1), randomIntFromInterval(-5, 5, 1));
+                    box3.push(new THREE.Box3().setFromObject(cube));
+                    box.push(cube);
+                }
+                
+                console.log(box3)
+            
+			}
+
+            function addCube(px, py, pz) {
+                var colorandom = new THREE.Color(0xffffff);
+                colorandom.setHex(Math.random() * 0xffffff);
+                var geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                var boxMaterial = new THREE.MeshBasicMaterial({ color: colorandom });
+                var cube = new THREE.Mesh(geometry, boxMaterial);
+
+                cube.position.set(px, py, pz);
+                cube.geometry.computeBoundingBox(); 
+
+                scene.add(cube);
+
+                return cube;
+            }
+
+			function addDirectionalLight(scene) {
+				const light = new THREE.DirectionalLight(0x9400D3, .3);
+				light.position.set(1, 1, 1);
+				scene.add(light);
+			}
+
+			function loadEnvironment(scene) {
+				new THREE.TextureLoader()
+					.setPath('img/')
+					.load('mountain.jpg', function (texture) {
+						texture.mapping = THREE.EquirectangularReflectionMapping;
+						texture.encoding = THREE.sRGBEncoding;
+						scene.background = texture;
+						scene.environment = texture;
+					});
+			}
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}
+
+			function animate() {
+				requestAnimationFrame(animate);
+
+                bones.forEach(b => {
+					b.rotation.x += Math.cos(Date.now()*0.005)*0.004;
+                	b.rotation.y += Math.cos(Date.now()*0.005)*0.004;					
+				});
+
+                analyser.getByteFrequencyData(dataArray);
+                var lowerHalfArray = dataArray.slice(0, (dataArray.length / 2)-1)
+                var upperHalfArray = dataArray.slice((dataArray.length / 2)-1, dataArray.length -1)
+
+                var sumLower = 0;
+                var sumUpper = 0;
+
+                for( var i = 0; i < lowerHalfArray.length; i++ ){
+                    sumLower += lowerHalfArray[i] ;
+                }
+
+                for( var i = 0; i < upperHalfArray.length; i++ ){
+                    sumUpper += upperHalfArray[i] ;
+                }
+
+                var avgLower = sumLower/lowerHalfArray.length;
+                avgLower = parseInt(avgLower, 10)
+
+                var avgUpper = sumUpper/upperHalfArray.length;
+                avgUpper = parseInt(avgUpper, 10)
+
+                if(analyser.getByteFrequencyData(dataArray) in lowerHalfArray){
+                    for(var i = 0; i < box3.length; i++){
+                        for(var j = 0; j < box3.length ; j++){
+                            box[i].scale.set(avgLower/100,avgLower/100,avgLower/100)
+                        }
+                    }
+                }else{
+                    for(var i = 0; i < box3.length; i++){
+                        for(var j = 0; j < box3.length ; j++){
+                            box[i].scale.set(avgUpper/5,avgUpper/5,avgUpper/5)
+                        }
+                    }
+                }
+               
+
+				renderer.render(scene, camera);
+			}
+
+		</script>
+
+	</body>
+</html>
