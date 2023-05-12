@@ -188,12 +188,14 @@
                     for(var i = 0; i < box3.length; i++){
                         for(var j = 0; j < box3.length ; j++){
                             box[i].scale.set(avgLower/100,avgLower/100,avgLower/100)
+                            box[i].material.color.set( Math.random() * 0xffffff );
                         }
                     }
                 }else{
                     for(var i = 0; i < box3.length; i++){
                         for(var j = 0; j < box3.length ; j++){
                             box[i].scale.set(avgUpper/5,avgUpper/5,avgUpper/5)
+                            box[i].material.color.set( Math.random() * 0xffffff );
                         }
                     }
                 }
